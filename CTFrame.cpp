@@ -12,12 +12,44 @@
 #include "ControlWnd.h"
 #include "PictWnd.h"
 
+wxDEFINE_EVENT(wxEVT_HAVE_IMG, wxCommandEvent);
+
+#define EVT_HAVE_IMG(id, fn) \
+    DECLARE_EVENT_TABLE_ENTRY( \
+        wxEVT_HAVE_IMG, id, wxID_ANY, \
+        wxCommandEventHandler(fn), \
+        (wxObject *) NULL \
+    ),
+
+
 BEGIN_EVENT_TABLE(CTFrame, wxFrame)
 EVT_BUTTON(ID_SNAP, CTFrame::OnSnap)
 EVT_MENU(wxID_EXIT, CTFrame::OnExit)
+EVT_HAVE_IMG(wxID_ANY, CTFrame::OnHaveImg)
 END_EVENT_TABLE()
 
-static CTFrame *pframe = NULL;
+// static CTFrame *pframe = NULL;
+
+// Used to return data from request completed callback to GUI thread
+
+struct ImgInfo
+    {
+    ImgInfo (unsigned char *puc, int iWth, int iHgt)
+	{
+	m_puc = puc;
+	m_iWth = iWth;
+	m_iHgt = iHgt;
+	}
+    ~ImgInfo () {}
+    unsigned char *m_puc;
+    int m_iWth;
+    int m_iHgt;
+    int m_iExp;
+    float m_a_gain;
+    float m_d_gain;
+    float m_r_gain;
+    float m_b_gain;
+    };
 
 /*** CTFrame ***********************************************
 
@@ -33,7 +65,7 @@ CTFrame::CTFrame (void)
 :  wxFrame (NULL, wxID_ANY, wxT("Camera Test Program"), wxDefaultPosition, wxDefaultSize)
     {
     // Initialise variables.
-    pframe = this;
+    // pframe = this;
 
     // Create a menu.
 
@@ -53,7 +85,11 @@ CTFrame::CTFrame (void)
     m_sizer->Add (m_pictwnd, 1, wxEXPAND);
     SetSizer (m_sizer);
 
-    Config ();
+    // Start camera
+    
+    m_iWth = 2592;
+    m_iHgt = 1944;
+    CamStart ();
     }
 
 /*** ~CTFrame ************************************************************
@@ -68,26 +104,7 @@ CTFrame::CTFrame (void)
 
 CTFrame::~CTFrame (void)
     {
-    if ( m_bRunning )
-        {
-	printf ("Stop camera\n");
-	if (m_camera->stop())
-	    throw std::runtime_error("failed to stop camera");
-        }
-    m_bRunning = false;
-    
-    if (m_camera_acquired)
-	{
-	printf ("Release camera\n");
-	m_camera->release();
-	}
-    m_camera_acquired = false;
-
-    printf ("Reset camera\n");
-    m_camera.reset();
-
-    printf ("Reset camera manager\n");
-    m_camera_manager.reset();
+    CamStop ();
     }
 
 /*** OnExit **************************************************************
@@ -106,16 +123,17 @@ CTFrame::~CTFrame (void)
 
 void CTFrame::OnExit (wxCommandEvent &e)
     {
+    CamStop ();
     Close ();
     }
 
-/*** Config ************************************************************************************************
+/*** CamStart ************************************************************************************************
 
-Configure camera.
+Configure and start camera.
 
 */
 
-void CTFrame::Config (void)
+void CTFrame::CamStart (void)
     {
 
     // Get camera
@@ -147,8 +165,8 @@ void CTFrame::Config (void)
 	throw std::runtime_error("failed to generate still capture configuration");
     libcamera::StreamConfiguration &scfg = (*m_configuration)[0];
     scfg.pixelFormat = libcamera::formats::RGB888;
-    scfg.size.width = 2592;
-    scfg.size.height = 1944;
+    scfg.size.width = m_iWth;
+    scfg.size.height = m_iHgt;
     m_configuration->transform = libcamera::Transform::Identity;
     libcamera::CameraConfiguration::Status validation = m_configuration->validate();
     if (validation == libcamera::CameraConfiguration::Invalid)
@@ -190,6 +208,41 @@ void CTFrame::Config (void)
     m_bRunning = true;
     }
 
+/*** CamStop ***********************************************************************************************
+
+Stop camera.
+
+*/
+
+void CTFrame::CamStop (void)
+    {
+    if ( m_bRunning )
+        {
+	printf ("Stop camera\n");
+	if (m_camera->stop())
+	    printf("Failed to stop camera\n");
+        }
+    m_bRunning = false;
+    
+    if (m_camera_acquired)
+	{
+	printf ("Release camera\n");
+	m_camera->release();
+	}
+    m_camera_acquired = false;
+
+    if ( m_camera )
+	{
+	printf ("Reset camera\n");
+	m_camera.reset();
+	}
+
+    if ( m_camera_manager )
+	{
+	printf ("Reset camera manager\n");
+	m_camera_manager.reset();
+	}
+    }
 
 /*** OnSnap ************************************************************************************************
 
@@ -208,17 +261,25 @@ void CTFrame::OnSnap (wxCommandEvent &e)
 	printf ("Controls appled\n");
 	m_camera->queueRequest (req);
 	printf ("Request queued\n");
+	GetStatusBar()->SetStatusText("Requested new Image");
+	}
+    else
+	{
+	printf ("No free request buffers\n");
+	GetStatusBar()->SetStatusText("No free request buffers");
 	}
     }
 
 /*** DoneSnap ***********************************************************************************************
 
-Capture an image and display result.
+Request completed callback. Not a GUI context so need to queue updates.
 
 */
 
 void CTFrame::DoneSnap (libcamera::Request *req)
     {
+    // Get callback data
+    
     printf ("DoneSnap\n");
     libcamera::Request::BufferMap::const_iterator bmapi = req->buffers().begin();
     const libcamera::StreamConfiguration &scfg = bmapi->first->configuration();
@@ -228,6 +289,9 @@ void CTFrame::DoneSnap (libcamera::Request *req)
     int iWth = scfg.size.width;
     int iHgt = scfg.size.height;
     int iStr = scfg.stride;
+
+    // Extract image (scale if requested).
+    
     printf ("wth = %d, hgt = %d, stride = %d, mem = %p\n", iWth, iHgt, iStr, mem);
     unsigned char *pucImg;;
     int nScale = m_ctrlwnd->ImgScale ();
@@ -245,25 +309,40 @@ void CTFrame::DoneSnap (libcamera::Request *req)
         unsigned char *pucPix = pucScl;
         for ( int i = 0; i < iHgt; ++i )
             {
-            for ( int j = 0; j < 3 * iWth; ++j )
+            for ( int j = 0; j < iWth; ++j )
                 {
-                int iVal = 0;
-                for ( int ii = 0; ii < nScale; ++ii )
-                    {
-                    for ( int jj = 0; jj < nScale; ++jj )
-                        {
-                        iVal += pucImg[(nScale * i + ii) * iStr + nScale * j + jj];
-                        }
-                    }
-                *pucPix = iVal / ( nScale * nScale );
-                ++pucPix;
+		for ( int k = 0; k < 3; ++k )
+		    {
+		    int iVal = 0;
+		    for ( int ii = 0; ii < nScale; ++ii )
+			{
+			for ( int jj = 0; jj < nScale; ++jj )
+			    {
+			    iVal += pucImg[(nScale * i + ii) * iStr + 3 * (nScale * j + jj) + k];
+			    }
+			}
+		    *pucPix = iVal / ( nScale * nScale );
+		    ++pucPix;
+		    }
                 }
             }
         pucImg = pucScl;
         }
-    wxImage *pimg = new wxImage (iWth, iHgt, pucImg);
-    m_pictwnd->SetImage (pimg);
-    printf ("SetImage\nRequest metadata:\n");
+    printf ("Queueing HaveImage event\n");
+    wxCommandEvent *e = new wxCommandEvent(wxEVT_HAVE_IMG);
+    ImgInfo *pii = new ImgInfo(pucImg, iWth, iHgt);
+    pii->m_iExp = req->metadata().get(libcamera::controls::ExposureTime);
+    pii->m_a_gain = req->metadata().get(libcamera::controls::AnalogueGain);
+    pii->m_d_gain = req->metadata().get(libcamera::controls::DigitalGain);
+    libcamera::Span<const float> gains = req->metadata().get(libcamera::controls::ColourGains);
+    pii->m_r_gain = gains[0];
+    pii->m_b_gain = gains[1];
+    e->SetClientData (pii);
+    wxQueueEvent (this, e);
+
+    // Log all image details
+    
+    printf ("Request metadata:\n");
     // const libcamera::ControlIdMap &idmap = m_camera->controls().idmap();
     const libcamera::ControlIdMap &idmap = libcamera::controls::controls;
     for (std::pair<const unsigned int, libcamera::ControlValue> cli : req->metadata())
@@ -279,20 +358,19 @@ void CTFrame::DoneSnap (libcamera::Request *req)
     m_free_req.push (req);
     }
 
-/*** ShowGains **********************************************************************************************
+/*** OnHaveImage ********************************************************************************************
 
- */
+Update display with new image
 
-void CTFrame::ShowGains (int exp, float ag, float dg, float rg, float bg)
+*/
+
+void CTFrame::OnHaveImg (wxCommandEvent &e)
     {
-    // printf ("Exp = %d us, AG = %5.3f, DG = %5.3f, RG = %5.3f, BG = %5.3f\n",
-    //     exp, ag, dg, rg, bg);
-    if ( pframe )
-        {
-        pframe->m_exp = exp;
-        pframe->m_ag = ag;
-        pframe->m_dg = dg;
-        pframe->m_rg = rg;
-        pframe->m_bg = bg;
-        }
+    printf ("OnHaveImage\n");
+    ImgInfo *pii = (ImgInfo *) e.GetClientData ();
+    wxImage *pimg = new wxImage (pii->m_iWth, pii->m_iHgt, pii->m_puc);
+    m_pictwnd->SetImage (pimg);
+    GetStatusBar()->SetStatusText(wxString::Format("Exp %d AG %4.2f DG %4.2f RG %4.2f BG %4.2f",
+	    pii->m_iExp, pii->m_a_gain, pii->m_d_gain, pii->m_r_gain, pii->m_b_gain));
+    delete pii;
     }

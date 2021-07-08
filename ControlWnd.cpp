@@ -58,7 +58,7 @@ ControlWnd::ControlWnd (wxWindow *parent)
             phbsz1->Add (new wxSlider (this, 3*iCtrl, iVal, iMin, iMax, wxDefaultPosition,
                     wxSize (100,-1)), 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL);
             wxSpinCtrl *pspin =  new   wxSpinCtrl (this, 3*iCtrl + 1, wxT(""), wxDefaultPosition,
-                wxSize (60, -1));
+                wxSize (120, -1), wxSP_VERTICAL);
             pspin->SetRange (iMin, iMax);
             pspin->SetValue (iVal);
             phbsz1->Add (pspin, 0, wxALIGN_CENTRE_VERTICAL);
@@ -91,7 +91,7 @@ ControlWnd::ControlWnd (wxWindow *parent)
             phbsz1->Add (new wxSlider (this, 3*iCtrl + 1, iVal, iMin, iMax, wxDefaultPosition,
                     wxSize (100,-1)), 1, wxALIGN_CENTRE_VERTICAL);
             wxSpinCtrl *pspin =  new   wxSpinCtrl (this, 3*iCtrl + 2, wxT(""), wxDefaultPosition,
-                wxSize (60, -1));
+                wxSize (120, -1), wxSP_VERTICAL);
             pspin->SetRange (iMin, iMax);
             pspin->SetValue (iVal);
             phbsz1->Add (pspin, 0, wxALIGN_CENTRE_VERTICAL);
@@ -99,7 +99,7 @@ ControlWnd::ControlWnd (wxWindow *parent)
         else if ( iType == 5 )
             {
             wxSpinCtrl *pspin =  new   wxSpinCtrl (this, 3*iCtrl, wxT(""), wxDefaultPosition,
-                wxSize (60, -1));
+                wxSize (120, -1), wxSP_VERTICAL);
             pspin->SetRange (iMin, iMax);
             pspin->SetValue (iVal);
             m_fgsz->Add (pspin, 0, wxEXPAND | wxALIGN_CENTRE_VERTICAL);
@@ -112,7 +112,7 @@ ControlWnd::ControlWnd (wxWindow *parent)
             pchk->SetValue (it->Enabled ());
             phbsz1->Add (pchk, 0, wxALIGN_CENTRE_VERTICAL);
             wxSpinCtrl *pspin =  new   wxSpinCtrl (this, 3*iCtrl + 2, wxT(""), wxDefaultPosition,
-                wxSize (60, -1));
+                wxSize (120, -1), wxSP_VERTICAL);
             pspin->SetRange (iMin, iMax);
             pspin->SetValue (iVal);
             phbsz1->Add (pspin, 1, wxALIGN_CENTRE_VERTICAL);
@@ -367,118 +367,6 @@ void ControlWnd::LoadCtl (void)
     m_victl.push_back (ctl);
     }
 
-/*** SetControl ******************************************************
-
-     Set the value of a control.
-
-     Inputs:
-
-     iCtrl    =  Index of the control.
-     iSet     =  Value to set control to.
-
-     Function return:
-
-     True if control is changed, otherwise false.
-
-     Coding history:
-
-     WJB   18/ 9/11 First draft.
-
-*/
-
-bool ControlWnd::SetControl (enum CtrlID iCtrl, int iSet)
-    {
-    if ( iCtrl < m_victl.size () )
-        {
-        ImgCtl * pictl =  &m_victl[iCtrl];
-        int   iType;
-        iType =  pictl->GetType ();
-        if ( pictl->Set (iSet) )
-            {
-            iSet = pictl->GetValue ();
-            // printf ("Set controls: iType = %d, iSet = %d\n", iType, iSet);
-            if ( iType == 1 )
-                {
-                wxBoxSizer *phbsz =  (wxBoxSizer *) m_fgsz->GetItem (2 * iCtrl + 1)->GetSizer ();
-                wxSlider *  psld  =  (wxSlider *) phbsz->GetItem ((size_t) 0)->GetWindow ();
-                wxSpinCtrl *pspin =  (wxSpinCtrl *) phbsz->GetItem ((size_t) 1)->GetWindow ();
-                psld->SetValue (iSet);
-                pspin->SetValue (iSet);
-                // printf ("Set %s slider and spin control to %d.\n", pictl->GetDesc ().c_str (), iSet);
-                }
-            else if ( iType == 2 )
-                {
-                wxCheckBox *pchk =  (wxCheckBox *) m_fgsz->GetItem (2 * iCtrl + 1)->GetWindow ();
-                pchk->SetValue (iSet > 0);
-                // printf ("Set %s checkbox to %s.\n", pictl->GetDesc ().c_str (),
-                //     ( iSet ? "True" : "False" ));
-                }
-            else if ( iType == 3 )
-                {
-                wxChoice *pchc =  (wxChoice *) m_fgsz->GetItem (2 * iCtrl + 1)->GetWindow ();
-                pchc->SetSelection (iSet);
-                // printf ("Set %s selection to %d.\n", pictl->GetDesc ().c_str (), iSet);
-                }
-            return   true;
-            }
-        }
-    return   false;
-    }
-#if 0
-/*** UpdateControls ********************************************************************************
-
-Set all controls to correspond to camera state.
-
-Coding history:
-
-WJB 19/ 6/21    First draft
-
-*/
-
-void ControlWnd::UpdateControls (PiCam *picam)
-    {
-    /* Brightness */
-    SetControl (ctrlBright, picam->brightness);
-
-    /* Contrast */
-    SetControl (ctrlCont, picam->contrast);
-
-    /* Saturation */
-    SetControl (ctrlSat, picam->saturation);
-
-    /* Exposure Compensation */
-    SetControl (ctrlExpComp, picam->exposure_compensation);
-
-    /* White Balance */
-    SetControl (ctrlWhiteBal, picam->awb_mode);
-
-    /* Exposure Mode */
-    SetControl (ctrlExMode, picam->exposure_mode);
-
-    /* Meter Mode */
-    SetControl (ctrlMeterMode, picam->exposure_meter_mode);
-
-    /* Exposure Time */
-    SetControl (ctrlExp, picam->shutter_speed);
-
-    /* Analog Gain */
-    SetControl (ctrlAlgGain, 100 * picam->analog_gain);
-
-#if HAVE_DIG_GAIN
-    /* Digital Gain */
-    SetControl (ctrlDigGain, 100 * picam->digital_gain);
-#endif
-
-    /* Red Gain */
-    SetControl (ctrlRedGain, 100 * picam->awb_gains_r);
-
-    /* Blue Gain */
-    SetControl (ctrlBlueGain, 100 * picam->awb_gains_b);
-
-    /* Dynamic noise removal */
-    SetControl (ctrlDenoise, picam->dynamic_range_compensation);
-    }
-#endif
 /*** ApplyControls *************************************************************************************
 
 Apply control settings to camera

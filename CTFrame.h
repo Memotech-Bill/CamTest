@@ -21,11 +21,12 @@ class CTFrame : public wxFrame
 public:
     CTFrame ();
     ~CTFrame ();
-    void Config (void);
     void OnExit (wxCommandEvent &e);
+    void CamStart (void);
+    void CamStop (void);
     void OnSnap (wxCommandEvent &e);
     void DoneSnap (libcamera::Request *req);
-    static void ShowGains (int exp, float ag, float dg, float rg, float bg);
+    void OnHaveImg (wxCommandEvent &e);
 
 private:
     wxMenuBar *     m_menubar;
@@ -35,11 +36,8 @@ private:
     ControlWnd *    m_ctrlwnd;
     PictWnd *       m_pictwnd;
     bool            m_bRunning;
-    int             m_exp;
-    float           m_ag;
-    float           m_dg;
-    float           m_rg;
-    float           m_bg;
+    int             m_iWth;
+    int             m_iHgt;
     std::unique_ptr<libcamera::CameraManager> m_camera_manager;
     std::shared_ptr<libcamera::Camera> m_camera;
     bool m_camera_acquired;
