@@ -25,7 +25,8 @@ enum CtrlID
     ctrlRedGain,
     ctrlBlueGain,
     ctrlDenoise,
-    ctrlScale
+    ctrlScale,
+    ctrlRun
     };
 
 class ImgCtl

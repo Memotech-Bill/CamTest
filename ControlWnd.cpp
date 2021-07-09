@@ -365,6 +365,19 @@ void ControlWnd::LoadCtl (void)
     ctl.m_bEnable  =  true;
     ctl.m_bChanged =  false;
     m_victl.push_back (ctl);
+
+    /* Camera Run */
+    ctl.m_iID      =  ctrlRun;          // Control ID.
+    ctl.m_sName    =  "Camera Run";     // Control name.
+    ctl.m_iType    =  2;                // Control type.
+    ctl.m_iMin     =  1;                // Minimum control value.
+    ctl.m_iMax     =  5;                // Maximum control value.
+    ctl.m_iStep    =  1;                // Control value step.
+    ctl.m_iDefault =  1;                // Default value.
+    ctl.m_iValue   =  1;                // Current value.
+    ctl.m_bEnable  =  false;
+    ctl.m_bChanged =  false;
+    m_victl.push_back (ctl);
     }
 
 /*** ApplyControls *************************************************************************************
@@ -439,15 +452,6 @@ void ControlWnd::ApplyControls (libcamera::ControlList &controls_)
     if ( m_victl[ctrlDenoise].m_bEnable )
 	controls_.set(libcamera::controls::draft::NoiseReductionMode,
 	    libcamera::controls::draft::NoiseReductionModeEnum(m_victl[ctrlDenoise].m_iValue));
-    }
-
-/*** ImgScale **********************************************************
-
- */
-
-int ControlWnd::ImgScale (void)
-    {
-    return m_victl[ctrlScale].m_iValue;
     }
 
 /*** OnChoice *********************************************************

@@ -24,6 +24,7 @@ public:
     void OnExit (wxCommandEvent &e);
     void CamStart (void);
     void CamStop (void);
+    void CamReq (void);
     void OnSnap (wxCommandEvent &e);
     void DoneSnap (libcamera::Request *req);
     void OnHaveImg (wxCommandEvent &e);
@@ -38,6 +39,7 @@ private:
     bool            m_bRunning;
     int             m_iWth;
     int             m_iHgt;
+    int             m_frame;
     std::unique_ptr<libcamera::CameraManager> m_camera_manager;
     std::shared_ptr<libcamera::Camera> m_camera;
     bool m_camera_acquired;

@@ -28,8 +28,6 @@ EVT_MENU(wxID_EXIT, CTFrame::OnExit)
 EVT_HAVE_IMG(wxID_ANY, CTFrame::OnHaveImg)
 END_EVENT_TABLE()
 
-// static CTFrame *pframe = NULL;
-
 // Used to return data from request completed callback to GUI thread
 
 struct ImgInfo
@@ -64,9 +62,6 @@ struct ImgInfo
 CTFrame::CTFrame (void)
 :  wxFrame (NULL, wxID_ANY, wxT("Camera Test Program"), wxDefaultPosition, wxDefaultSize)
     {
-    // Initialise variables.
-    // pframe = this;
-
     // Create a menu.
 
     m_menuFile     =  new wxMenu ();
@@ -89,6 +84,7 @@ CTFrame::CTFrame (void)
     
     m_iWth = 2592;
     m_iHgt = 1944;
+    m_frame = 0;
     CamStart ();
     }
 
@@ -164,7 +160,7 @@ void CTFrame::CamStart (void)
     if (!m_configuration)
 	throw std::runtime_error("failed to generate still capture configuration");
     libcamera::StreamConfiguration &scfg = (*m_configuration)[0];
-    scfg.pixelFormat = libcamera::formats::RGB888;
+    scfg.pixelFormat = libcamera::formats::BGR888;
     scfg.size.width = m_iWth;
     scfg.size.height = m_iHgt;
     m_configuration->transform = libcamera::Transform::Identity;
@@ -242,6 +238,31 @@ void CTFrame::CamStop (void)
 	printf ("Reset camera manager\n");
 	m_camera_manager.reset();
 	}
+    printf ("Camera stopped\n");
+    }
+
+/*** CamReq ************************************************************************************************
+
+Request a frame
+
+*/
+
+void CTFrame::CamReq (void)
+    {
+    if ( ! m_free_req.empty () )
+	{
+	libcamera::Request *req = m_free_req.front ();
+	m_free_req.pop ();
+	m_ctrlwnd->ApplyControls (req->controls ());
+	printf ("Controls appled\n");
+	m_camera->queueRequest (req);
+	printf ("Request queued\n");
+	}
+    else
+	{
+	printf ("No free request buffers\n");
+	GetStatusBar()->SetStatusText("No free request buffers");
+	}
     }
 
 /*** OnSnap ************************************************************************************************
@@ -253,21 +274,8 @@ Request an image, applying camera settings.
 void CTFrame::OnSnap (wxCommandEvent &e)
     {
     printf ("OnSnap\n");
-    if ( ! m_free_req.empty () )
-	{
-	libcamera::Request *req = m_free_req.front ();
-	m_free_req.pop ();
-	m_ctrlwnd->ApplyControls (req->controls ());
-	printf ("Controls appled\n");
-	m_camera->queueRequest (req);
-	printf ("Request queued\n");
-	GetStatusBar()->SetStatusText("Requested new Image");
-	}
-    else
-	{
-	printf ("No free request buffers\n");
-	GetStatusBar()->SetStatusText("No free request buffers");
-	}
+    CamReq ();
+    GetStatusBar()->SetStatusText("Requested new Image");
     }
 
 /*** DoneSnap ***********************************************************************************************
@@ -335,8 +343,16 @@ void CTFrame::DoneSnap (libcamera::Request *req)
     pii->m_a_gain = req->metadata().get(libcamera::controls::AnalogueGain);
     pii->m_d_gain = req->metadata().get(libcamera::controls::DigitalGain);
     libcamera::Span<const float> gains = req->metadata().get(libcamera::controls::ColourGains);
-    pii->m_r_gain = gains[0];
-    pii->m_b_gain = gains[1];
+    if ( gains.size() == 2 )
+	{
+	pii->m_r_gain = gains[0];
+	pii->m_b_gain = gains[1];
+	}
+    else
+	{
+	pii->m_r_gain = -1.0;
+	pii->m_b_gain = -1.0;
+	}
     e->SetClientData (pii);
     wxQueueEvent (this, e);
 
@@ -370,7 +386,8 @@ void CTFrame::OnHaveImg (wxCommandEvent &e)
     ImgInfo *pii = (ImgInfo *) e.GetClientData ();
     wxImage *pimg = new wxImage (pii->m_iWth, pii->m_iHgt, pii->m_puc);
     m_pictwnd->SetImage (pimg);
-    GetStatusBar()->SetStatusText(wxString::Format("Exp %d AG %4.2f DG %4.2f RG %4.2f BG %4.2f",
-	    pii->m_iExp, pii->m_a_gain, pii->m_d_gain, pii->m_r_gain, pii->m_b_gain));
+    GetStatusBar()->SetStatusText(wxString::Format("Frame %d Exp %d AG %4.2f DG %4.2f RG %4.2f BG %4.2f",
+	    ++m_frame, pii->m_iExp, pii->m_a_gain, pii->m_d_gain, pii->m_r_gain, pii->m_b_gain));
     delete pii;
+    if ( m_ctrlwnd->RunCamera () ) CamReq ();
     }

@@ -18,6 +18,7 @@ Coding history:
 bool CamTest::OnInit (void)
    {
    m_frame  =  new CTFrame ();
+   m_frame->Maximize ();
    m_frame->Show ();
 
    return   true;

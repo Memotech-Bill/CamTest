@@ -22,7 +22,8 @@ public:
     bool SetControl (enum CtrlID iCtrl, int iSet);
     // void UpdateControls (PiCam *picam);
     void ApplyControls (libcamera::ControlList &controls_);
-    int ImgScale (void);
+    int ImgScale (void) { return m_victl[ctrlScale].m_iValue; }
+    bool RunCamera (void) { return m_victl[ctrlRun].m_bEnable; }
     void OnChoice (wxCommandEvent &e);
     void OnCheckBox (wxCommandEvent &e);
     void OnSlider (wxCommandEvent &e);
