@@ -49,7 +49,6 @@ private:
     std::map<libcamera::Stream *, std::queue<libcamera::FrameBuffer *>> m_frame_buffers;
     std::vector<std::unique_ptr<libcamera::Request>> m_requests;
     std::queue<libcamera::Request *> m_free_req;
-    libcamera::ControlList m_controls;
 
     DECLARE_EVENT_TABLE()
     };

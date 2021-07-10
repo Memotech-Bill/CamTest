@@ -196,9 +196,10 @@ void CTFrame::CamStart (void)
 	m_free_req.push (m_requests.back ().get());
 	}
     m_camera->requestCompleted.connect(this, &CTFrame::DoneSnap);
-    m_ctrlwnd->ApplyControls (m_controls);
+    libcamera::ControlList controls;
+    m_ctrlwnd->ApplyControls (controls);
     printf ("Camera controls appled\n");
-    if (m_camera->start(&m_controls))
+    if (m_camera->start(&controls))
 	throw std::runtime_error("failed to start camera");
     printf ("Camera running\n");
     m_bRunning = true;
@@ -219,6 +220,40 @@ void CTFrame::CamStop (void)
 	    printf("Failed to stop camera\n");
         }
     m_bRunning = false;
+
+    if ( m_camera )
+	{
+	printf ("Disconnect completion callback\n");
+	m_camera->requestCompleted.disconnect(this, &CTFrame::DoneSnap);
+	}
+
+    printf ("Clear requests\n");
+    m_requests.clear ();
+
+    for (auto &iter : m_mapped_buffers)
+	{
+	assert(iter.first->planes().size() == iter.second.size());
+	for (unsigned i = 0; i < iter.first->planes().size(); i++)
+	    {
+	    printf ("unmap %p, length = %d\n", iter.second[i], iter.first->planes()[i].length);
+	    munmap(iter.second[i], iter.first->planes()[i].length);
+	    }
+	}
+    m_mapped_buffers.clear();
+    m_frame_buffers.clear();
+
+    if ( m_allocator )
+	{
+	printf ("Delete FrameBufferAllocator\n");
+	delete m_allocator;
+	m_allocator = nullptr;
+	}
+
+    if ( m_configuration )
+	{
+	printf ("Release camera configuration\n");
+	m_configuration.reset();
+	}
     
     if (m_camera_acquired)
 	{
@@ -226,7 +261,7 @@ void CTFrame::CamStop (void)
 	m_camera->release();
 	}
     m_camera_acquired = false;
-
+    
     if ( m_camera )
 	{
 	printf ("Reset camera\n");

@@ -159,7 +159,7 @@ void ControlWnd::LoadCtl (void)
     /* Brightness */
     ctl.m_iID      =  ctrlBright;       // Control ID.
     ctl.m_sName    =  "Brightness";     // Control name.
-    ctl.m_iType    =  1;                // Control type.
+    ctl.m_iType    =  4;                // Control type.
     ctl.m_iMin     =  0;                // Minimum control value.
     ctl.m_iMax     =  100;              // Maximum control value.
     ctl.m_iStep    =  1;                // Control value step.
@@ -172,7 +172,7 @@ void ControlWnd::LoadCtl (void)
     /* Contrast */
     ctl.m_iID      =  ctrlCont;         // Control ID.
     ctl.m_sName    =  "Contrast";       // Control name.
-    ctl.m_iType    =  1;                // Control type.
+    ctl.m_iType    =  4;                // Control type.
     ctl.m_iMin     =  -100;             // Minimum control value.
     ctl.m_iMax     =  100;              // Maximum control value.
     ctl.m_iStep    =  1;                // Control value step.
@@ -185,7 +185,7 @@ void ControlWnd::LoadCtl (void)
     /* Saturation */
     ctl.m_iID      =  ctrlSat;          // Control ID.
     ctl.m_sName    =  "Saturation";     // Control name.
-    ctl.m_iType    =  1;                // Control type.
+    ctl.m_iType    =  4;                // Control type.
     ctl.m_iMin     =  -100;             // Minimum control value.
     ctl.m_iMax     =  100;              // Maximum control value.
     ctl.m_iStep    =  1;                // Control value step.
@@ -198,7 +198,7 @@ void ControlWnd::LoadCtl (void)
     /* Exposure Compensation */
     ctl.m_iID      =  ctrlExpComp;      // Control ID.
     ctl.m_sName    =  "Exposure Comp."; // Control name.
-    ctl.m_iType    =  1;                // Control type.
+    ctl.m_iType    =  4;                // Control type.
     ctl.m_iMin     =  -10;              // Minimum control value.
     ctl.m_iMax     =  10;               // Maximum control value.
     ctl.m_iStep    =  1;                // Control value step.
@@ -284,7 +284,7 @@ void ControlWnd::LoadCtl (void)
     /* Analog Gain */
     ctl.m_iID      =  ctrlAlgGain;      // Control ID.
     ctl.m_sName    =  "Analog Gain";    // Control name.
-    ctl.m_iType    =  1;                // Control type.
+    ctl.m_iType    =  4;                // Control type.
     ctl.m_iMin     =  0;                // Minimum control value.
     ctl.m_iMax     =  400;              // Maximum control value.
     ctl.m_iStep    =  10;               // Control value step.
@@ -298,7 +298,7 @@ void ControlWnd::LoadCtl (void)
     /* Digital Gain */
     ctl.m_iID      =  ctrlDigGain;      // Control ID.
     ctl.m_sName    =  "Digital Gain";   // Control name.
-    ctl.m_iType    =  1;                // Control type.
+    ctl.m_iType    =  4;                // Control type.
     ctl.m_iMin     =  0;                // Minimum control value.
     ctl.m_iMax     =  6400;             // Maximum control value.
     ctl.m_iStep    =  100;              // Control value step.
@@ -312,7 +312,7 @@ void ControlWnd::LoadCtl (void)
     /* Red Gain */
     ctl.m_iID      =  ctrlRedGain;      // Control ID.
     ctl.m_sName    =  "Red Gain";       // Control name.
-    ctl.m_iType    =  1;                // Control type.
+    ctl.m_iType    =  4;                // Control type.
     ctl.m_iMin     =  0;                // Minimum control value.
     ctl.m_iMax     =  800;              // Maximum control value.
     ctl.m_iStep    =  10;               // Control value step.
@@ -325,7 +325,7 @@ void ControlWnd::LoadCtl (void)
     /* Blue Gain */
     ctl.m_iID      =  ctrlBlueGain;     // Control ID.
     ctl.m_sName    =  "Blue Gain";      // Control name.
-    ctl.m_iType    =  1;                // Control type.
+    ctl.m_iType    =  4;                // Control type.
     ctl.m_iMin     =  0;                // Minimum control value.
     ctl.m_iMax     =  800;              // Maximum control value.
     ctl.m_iStep    =  10;               // Control value step.
@@ -512,6 +512,20 @@ void ControlWnd::OnCheckBox (wxCommandEvent &e)
        {
        wxSpinCtrl *pspin =  (wxSpinCtrl *) pchk->GetNextSibling ();
        pspin->Enable (bEnable);
+       }
+   if ( iCtrl == ctrlRedGain )
+       {
+       m_victl[ctrlBlueGain].m_bEnable = bEnable;
+       ((wxCheckBox *)FindWindow (3 * ctrlBlueGain))->SetValue (bEnable);
+       FindWindow (3 * ctrlBlueGain + 1)->Enable (bEnable);
+       FindWindow (3 * ctrlBlueGain + 2)->Enable (bEnable);
+       }
+   else if ( iCtrl == ctrlBlueGain )
+       {
+       m_victl[ctrlRedGain].m_bEnable = bEnable;
+       ((wxCheckBox *)FindWindow (3 * ctrlRedGain))->SetValue (bEnable);
+       FindWindow (3 * ctrlRedGain + 1)->Enable (bEnable);
+       FindWindow (3 * ctrlRedGain + 2)->Enable (bEnable);
        }
    }
 
