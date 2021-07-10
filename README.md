@@ -3,6 +3,9 @@
 This program has been developed to try and gain some understanding of the use of libcamera
 on Raspberry Pi, and test the effect of the various controls.
 
+Since my interest is in capturing multiple still images, this program has only a single
+"Still" stream, no seperate "Viewfinder" stream.
+
 It is very much a work in progress, but it sort of works sometimes.
 
 Compilation requires:
