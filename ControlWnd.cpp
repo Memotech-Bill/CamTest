@@ -55,12 +55,15 @@ ControlWnd::ControlWnd (wxWindow *parent)
             {
             wxBoxSizer *phbsz1   =  new   wxBoxSizer (wxHORIZONTAL);
             m_fgsz->Add (phbsz1, 0, wxEXPAND | wxALIGN_CENTRE_VERTICAL);
-            phbsz1->Add (new wxSlider (this, 3*iCtrl, iVal, iMin, iMax, wxDefaultPosition,
-                    wxSize (100,-1)), 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL);
+	    wxSlider *pslide = new wxSlider (this, 3*iCtrl, iVal, iMin, iMax, wxDefaultPosition,
+		wxSize (100,-1));
+	    pslide->Enable (it->Enabled ());
+            phbsz1->Add (pslide, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL);
             wxSpinCtrl *pspin =  new   wxSpinCtrl (this, 3*iCtrl + 1, wxT(""), wxDefaultPosition,
                 wxSize (120, -1), wxSP_VERTICAL);
             pspin->SetRange (iMin, iMax);
             pspin->SetValue (iVal);
+	    pspin->Enable (it->Enabled ());
             phbsz1->Add (pspin, 0, wxALIGN_CENTRE_VERTICAL);
             }
         else if ( iType == 2 )
@@ -88,12 +91,15 @@ ControlWnd::ControlWnd (wxWindow *parent)
             wxCheckBox *   pchk  =  new wxCheckBox (this, 3*iCtrl, wxT(""));
             pchk->SetValue (it->Enabled ());
             phbsz1->Add (pchk, 0, wxALIGN_CENTRE_VERTICAL);
-            phbsz1->Add (new wxSlider (this, 3*iCtrl + 1, iVal, iMin, iMax, wxDefaultPosition,
-                    wxSize (100,-1)), 1, wxALIGN_CENTRE_VERTICAL);
+	    wxSlider *pslide = new wxSlider (this, 3*iCtrl + 1, iVal, iMin, iMax, wxDefaultPosition,
+		wxSize (100,-1));
+	    pslide->Enable (it->Enabled ());
+            phbsz1->Add (pslide, 1, wxALIGN_CENTRE_VERTICAL);
             wxSpinCtrl *pspin =  new   wxSpinCtrl (this, 3*iCtrl + 2, wxT(""), wxDefaultPosition,
                 wxSize (120, -1), wxSP_VERTICAL);
             pspin->SetRange (iMin, iMax);
             pspin->SetValue (iVal);
+	    pspin->Enable (it->Enabled ());
             phbsz1->Add (pspin, 0, wxALIGN_CENTRE_VERTICAL);
             }
         else if ( iType == 5 )
@@ -115,6 +121,7 @@ ControlWnd::ControlWnd (wxWindow *parent)
                 wxSize (120, -1), wxSP_VERTICAL);
             pspin->SetRange (iMin, iMax);
             pspin->SetValue (iVal);
+	    pspin->Enable (it->Enabled ());
             phbsz1->Add (pspin, 1, wxALIGN_CENTRE_VERTICAL);
             }
         }
@@ -204,7 +211,7 @@ void ControlWnd::LoadCtl (void)
     ctl.m_iStep    =  1;                // Control value step.
     ctl.m_iDefault =  0;                // Default value.
     ctl.m_iValue   =  0;                // Current value.
-    ctl.m_bEnable  =  true;
+    ctl.m_bEnable  =  false;
     ctl.m_bChanged =  false;
     m_victl.push_back (ctl);
 
@@ -277,7 +284,7 @@ void ControlWnd::LoadCtl (void)
     ctl.m_iStep    =  1000;             // Control value step.
     ctl.m_iDefault =  10000;            // Default value.
     ctl.m_iValue   =  10000;            // Current value.
-    ctl.m_bEnable  =  true;
+    ctl.m_bEnable  =  false;
     ctl.m_bChanged =  false;
     m_victl.push_back (ctl);
 
@@ -290,7 +297,7 @@ void ControlWnd::LoadCtl (void)
     ctl.m_iStep    =  10;               // Control value step.
     ctl.m_iDefault =  100;              // Default value.
     ctl.m_iValue   =  100;              // Current value.
-    ctl.m_bEnable  =  true;
+    ctl.m_bEnable  =  false;
     ctl.m_bChanged =  false;
     m_victl.push_back (ctl);
 
@@ -304,7 +311,7 @@ void ControlWnd::LoadCtl (void)
     ctl.m_iStep    =  100;              // Control value step.
     ctl.m_iDefault =  100;              // Default value.
     ctl.m_iValue   =  100;              // Current value.
-    ctl.m_bEnable  =  true;
+    ctl.m_bEnable  =  false;
     ctl.m_bChanged =  false;
     m_victl.push_back (ctl);
 #endif
@@ -318,7 +325,7 @@ void ControlWnd::LoadCtl (void)
     ctl.m_iStep    =  10;               // Control value step.
     ctl.m_iDefault =  100;              // Default value.
     ctl.m_iValue   =  100;              // Current value.
-    ctl.m_bEnable  =  true;
+    ctl.m_bEnable  =  false;
     ctl.m_bChanged =  false;
     m_victl.push_back (ctl);
 
@@ -331,7 +338,7 @@ void ControlWnd::LoadCtl (void)
     ctl.m_iStep    =  10;               // Control value step.
     ctl.m_iDefault =  100;              // Default value.
     ctl.m_iValue   =  100;              // Current value.
-    ctl.m_bEnable  =  true;
+    ctl.m_bEnable  =  false;
     ctl.m_bChanged =  false;
     m_victl.push_back (ctl);
 
@@ -409,17 +416,25 @@ void ControlWnd::ApplyControls (libcamera::ControlList &controls_)
 	controls_.set(libcamera::controls::ExposureValue, m_victl[ctrlExpComp].m_iValue / 4.0);
 
     /* White Balance */
-    if ( m_victl[ctrlWhiteBal].m_bEnable )
+    if ( ( m_victl[ctrlWhiteBal].m_bEnable ) && ( m_victl[ctrlWhiteBal].m_iValue > 0 ) )
 	{
-	controls_.set(libcamera::controls::AwbEnable, m_victl[ctrlWhiteBal].m_iValue > 0);
+	controls_.set(libcamera::controls::AwbEnable, true);
 	controls_.set(libcamera::controls::AwbMode, m_victl[ctrlWhiteBal].m_iValue - 1);
+	}
+    else
+	{
+	controls_.set(libcamera::controls::AwbEnable, false);
 	}
 
     /* Exposure Mode */
-    if ( m_victl[ctrlExMode].m_bEnable )
+    if ( ( m_victl[ctrlExMode].m_bEnable ) && m_victl[ctrlExMode].m_iValue > 0 )
 	{
-	controls_.set(libcamera::controls::AeEnable, m_victl[ctrlExMode].m_iValue > 0);
+	controls_.set(libcamera::controls::AeEnable, true);
 	controls_.set(libcamera::controls::AeExposureMode, m_victl[ctrlExMode].m_iValue - 1);
+	}
+    else
+	{
+	controls_.set(libcamera::controls::AeEnable, false);
 	}
 
     /* Meter Mode */
@@ -429,7 +444,7 @@ void ControlWnd::ApplyControls (libcamera::ControlList &controls_)
     /* Exposure Time */
     if ( m_victl[ctrlExp].m_bEnable )
 	controls_.set(libcamera::controls::ExposureTime, m_victl[ctrlExp].m_iValue);
-    else controls_.set(libcamera::controls::ExposureTime, 0);
+    // else controls_.set(libcamera::controls::ExposureTime, 0);
 
     /* Analog Gain */
     if ( m_victl[ctrlAlgGain].m_bEnable )

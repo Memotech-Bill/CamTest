@@ -131,6 +131,7 @@ Configure and start camera.
 
 void CTFrame::CamStart (void)
     {
+    printf ("CamStart\n");
 
     // Get camera
     
@@ -213,6 +214,7 @@ Stop camera.
 
 void CTFrame::CamStop (void)
     {
+    printf ("CamStop\n");
     if ( m_bRunning )
         {
 	printf ("Stop camera\n");
@@ -284,14 +286,23 @@ Request a frame
 
 void CTFrame::CamReq (void)
     {
+    printf ("CamReq\n");
     if ( ! m_free_req.empty () )
 	{
 	libcamera::Request *req = m_free_req.front ();
 	m_free_req.pop ();
 	m_ctrlwnd->ApplyControls (req->controls ());
 	printf ("Controls appled\n");
-	m_camera->queueRequest (req);
-	printf ("Request queued\n");
+	int iSta = m_camera->queueRequest (req);
+	if ( iSta == 0 )
+	    {
+	    printf ("Request queued\n");
+	    }
+	else
+	    {
+	    printf ("Error %d queueing request\n", iSta);
+	    GetStatusBar()->SetStatusText(wxString::Format ("Error %d queueing request\n", iSta));
+	    }
 	}
     else
 	{
@@ -325,9 +336,12 @@ void CTFrame::DoneSnap (libcamera::Request *req)
     
     printf ("DoneSnap\n");
     libcamera::Request::BufferMap::const_iterator bmapi = req->buffers().begin();
+    if ( bmapi == req->buffers().end () ) return;
     const libcamera::StreamConfiguration &scfg = bmapi->first->configuration();
     const libcamera::FrameBuffer *frame = bmapi->second;
+    if ( frame == nullptr ) return;
     const void * mem = m_mapped_buffers[frame][0];
+    if ( mem == nullptr ) return;
     int len = frame->planes()[0].length;
     int iWth = scfg.size.width;
     int iHgt = scfg.size.height;
@@ -392,10 +406,21 @@ void CTFrame::DoneSnap (libcamera::Request *req)
     wxQueueEvent (this, e);
 
     // Log all image details
-    
-    printf ("Request metadata:\n");
+
+    ++m_frame;
     // const libcamera::ControlIdMap &idmap = m_camera->controls().idmap();
     const libcamera::ControlIdMap &idmap = libcamera::controls::controls;
+    printf ("Frame %d Request controls:\n", m_frame);
+    for (std::pair<const unsigned int, libcamera::ControlValue> cli : req->controls())
+	{
+	// const std::string name = idmap.at(cli.first)->name();
+	std::string name = "Unknown";
+	libcamera::ControlIdMap::const_iterator it = idmap.find (cli.first);
+	if ( it != idmap.end () ) name = it->second->name();
+	std::string val = cli.second.toString();
+	printf ("   Req %s (%d) = %s\n", name.c_str (), cli.first, val.c_str ());
+	}
+    printf ("Frame %d Request metadata:\n", m_frame);
     for (std::pair<const unsigned int, libcamera::ControlValue> cli : req->metadata())
 	{
 	// const std::string name = idmap.at(cli.first)->name();
@@ -403,7 +428,7 @@ void CTFrame::DoneSnap (libcamera::Request *req)
 	libcamera::ControlIdMap::const_iterator it = idmap.find (cli.first);
 	if ( it != idmap.end () ) name = it->second->name();
 	std::string val = cli.second.toString();
-	printf ("%s (%d) = %s\n", name.c_str (), cli.first, val.c_str ());
+	printf ("   Have %s (%d) = %s\n", name.c_str (), cli.first, val.c_str ());
 	}
     req->reuse (libcamera::Request::ReuseBuffers);
     m_free_req.push (req);
@@ -422,7 +447,7 @@ void CTFrame::OnHaveImg (wxCommandEvent &e)
     wxImage *pimg = new wxImage (pii->m_iWth, pii->m_iHgt, pii->m_puc);
     m_pictwnd->SetImage (pimg);
     GetStatusBar()->SetStatusText(wxString::Format("Frame %d Exp %d AG %4.2f DG %4.2f RG %4.2f BG %4.2f",
-	    ++m_frame, pii->m_iExp, pii->m_a_gain, pii->m_d_gain, pii->m_r_gain, pii->m_b_gain));
+	    m_frame, pii->m_iExp, pii->m_a_gain, pii->m_d_gain, pii->m_r_gain, pii->m_b_gain));
     delete pii;
-    if ( m_ctrlwnd->RunCamera () ) CamReq ();
+    if ( m_bRunning && m_ctrlwnd->RunCamera () ) CamReq ();
     }
