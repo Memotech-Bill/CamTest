@@ -47,6 +47,8 @@ struct ImgInfo
     float m_d_gain;
     float m_r_gain;
     float m_b_gain;
+    float m_lux;
+    int m_temp;
     };
 
 /*** CTFrame ***********************************************
@@ -162,6 +164,7 @@ void CTFrame::CamStart (void)
 	throw std::runtime_error("failed to generate still capture configuration");
     libcamera::StreamConfiguration &scfg = (*m_configuration)[0];
     scfg.pixelFormat = libcamera::formats::BGR888;
+    scfg.bufferCount = 3;
     scfg.size.width = m_iWth;
     scfg.size.height = m_iHgt;
     m_configuration->transform = libcamera::Transform::Identity;
@@ -320,8 +323,8 @@ Request an image, applying camera settings.
 void CTFrame::OnSnap (wxCommandEvent &e)
     {
     printf ("OnSnap\n");
+    GetStatusBar()->SetStatusText("Request new Image");
     CamReq ();
-    GetStatusBar()->SetStatusText("Requested new Image");
     }
 
 /*** DoneSnap ***********************************************************************************************
@@ -391,6 +394,8 @@ void CTFrame::DoneSnap (libcamera::Request *req)
     pii->m_iExp = req->metadata().get(libcamera::controls::ExposureTime);
     pii->m_a_gain = req->metadata().get(libcamera::controls::AnalogueGain);
     pii->m_d_gain = req->metadata().get(libcamera::controls::DigitalGain);
+    pii->m_lux = req->metadata().get(libcamera::controls::Lux);
+    pii->m_temp = req->metadata().get(libcamera::controls::ColourTemperature);
     libcamera::Span<const float> gains = req->metadata().get(libcamera::controls::ColourGains);
     if ( gains.size() == 2 )
 	{
@@ -446,8 +451,10 @@ void CTFrame::OnHaveImg (wxCommandEvent &e)
     ImgInfo *pii = (ImgInfo *) e.GetClientData ();
     wxImage *pimg = new wxImage (pii->m_iWth, pii->m_iHgt, pii->m_puc);
     m_pictwnd->SetImage (pimg);
-    GetStatusBar()->SetStatusText(wxString::Format("Frame %d Exp %d AG %4.2f DG %4.2f RG %4.2f BG %4.2f",
-	    m_frame, pii->m_iExp, pii->m_a_gain, pii->m_d_gain, pii->m_r_gain, pii->m_b_gain));
+    GetStatusBar()->SetStatusText(wxString::Format(
+	    "Frame %d Exp %d AG %4.2f DG %4.2f RG %4.2f BG %4.2f Lux %3.1f Temp %d",
+	    m_frame, pii->m_iExp, pii->m_a_gain, pii->m_d_gain, pii->m_r_gain, pii->m_b_gain,
+	    pii->m_lux, pii->m_temp));
     delete pii;
     if ( m_bRunning && m_ctrlwnd->RunCamera () ) CamReq ();
     }
