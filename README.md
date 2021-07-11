@@ -14,6 +14,13 @@ Compilation requires:
 https://www.raspberrypi.org/documentation/linux/software/libcamera/README.md
 * sudo apt install libwxgtk3.0-gtk3-dev
 
+There is now one option in CTFrame.cpp that can be configured before compilation:
+
+* If QUEUE_MULTIPLE is zero then repeated frame capture will not queue a new request
+until the previous request has returned.
+* If QUEUE_MULTIPLE is non-zero then repeated frame capture will queue all request
+buffers as soon as they are available.
+
 The resulting ./CamTest application is an X-Window program. When run, it displays camera controls
 on the left hand side, and captured images on the right hand side. If too large to display in full
 the image can be scrolled to view sections of it.

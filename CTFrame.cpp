@@ -12,6 +12,9 @@
 #include "ControlWnd.h"
 #include "PictWnd.h"
 
+#define QUEUE_MULTIPLE   0   // Non zero to queue multiple requests
+#define NUM_REQUESTS     3   // Number of request buffers to define
+
 wxDEFINE_EVENT(wxEVT_HAVE_IMG, wxCommandEvent);
 
 #define EVT_HAVE_IMG(id, fn) \
@@ -40,6 +43,7 @@ struct ImgInfo
 	}
     ~ImgInfo () {}
     unsigned char *m_puc;
+    int m_frame;
     int m_iWth;
     int m_iHgt;
     int m_iExp;
@@ -164,7 +168,7 @@ void CTFrame::CamStart (void)
 	throw std::runtime_error("failed to generate still capture configuration");
     libcamera::StreamConfiguration &scfg = (*m_configuration)[0];
     scfg.pixelFormat = libcamera::formats::BGR888;
-    scfg.bufferCount = 3;
+    scfg.bufferCount = NUM_REQUESTS;
     scfg.size.width = m_iWth;
     scfg.size.height = m_iHgt;
     m_configuration->transform = libcamera::Transform::Identity;
@@ -290,6 +294,34 @@ Request a frame
 void CTFrame::CamReq (void)
     {
     printf ("CamReq\n");
+#if QUEUE_MULTIPLE
+    if ( ! m_free_req.empty () )
+	{
+	while ( ! m_free_req.empty () );
+	    {
+	    libcamera::Request *req = m_free_req.front ();
+	    m_free_req.pop ();
+	    m_ctrlwnd->ApplyControls (req->controls ());
+	    printf ("Controls appled\n");
+	    int iSta = m_camera->queueRequest (req);
+	    if ( iSta == 0 )
+		{
+		printf ("Request queued\n");
+		}
+	    else
+		{
+		printf ("Error %d queueing request\n", iSta);
+		GetStatusBar()->SetStatusText(wxString::Format ("Error %d queueing request\n", iSta));
+		}
+	    if ( !m_ctrlwnd->RunCamera () ) break;
+	    }
+	}
+    else if ( !m_ctrlwnd->RunCamera () )
+	{
+	printf ("No free request buffers\n");
+	GetStatusBar()->SetStatusText("No free request buffers");
+	}
+#else
     if ( ! m_free_req.empty () )
 	{
 	libcamera::Request *req = m_free_req.front ();
@@ -312,6 +344,7 @@ void CTFrame::CamReq (void)
 	printf ("No free request buffers\n");
 	GetStatusBar()->SetStatusText("No free request buffers");
 	}
+#endif
     }
 
 /*** OnSnap ************************************************************************************************
@@ -388,9 +421,11 @@ void CTFrame::DoneSnap (libcamera::Request *req)
             }
         pucImg = pucScl;
         }
+    ++m_frame;
     printf ("Queueing HaveImage event\n");
     wxCommandEvent *e = new wxCommandEvent(wxEVT_HAVE_IMG);
     ImgInfo *pii = new ImgInfo(pucImg, iWth, iHgt);
+    pii->m_frame = m_frame;
     pii->m_iExp = req->metadata().get(libcamera::controls::ExposureTime);
     pii->m_a_gain = req->metadata().get(libcamera::controls::AnalogueGain);
     pii->m_d_gain = req->metadata().get(libcamera::controls::DigitalGain);
@@ -412,7 +447,6 @@ void CTFrame::DoneSnap (libcamera::Request *req)
 
     // Log all image details
 
-    ++m_frame;
     // const libcamera::ControlIdMap &idmap = m_camera->controls().idmap();
     const libcamera::ControlIdMap &idmap = libcamera::controls::controls;
     printf ("Frame %d Request controls:\n", m_frame);
@@ -453,7 +487,7 @@ void CTFrame::OnHaveImg (wxCommandEvent &e)
     m_pictwnd->SetImage (pimg);
     GetStatusBar()->SetStatusText(wxString::Format(
 	    "Frame %d Exp %d AG %4.2f DG %4.2f RG %4.2f BG %4.2f Lux %3.1f Temp %d",
-	    m_frame, pii->m_iExp, pii->m_a_gain, pii->m_d_gain, pii->m_r_gain, pii->m_b_gain,
+	    pii->m_frame, pii->m_iExp, pii->m_a_gain, pii->m_d_gain, pii->m_r_gain, pii->m_b_gain,
 	    pii->m_lux, pii->m_temp));
     delete pii;
     if ( m_bRunning && m_ctrlwnd->RunCamera () ) CamReq ();
