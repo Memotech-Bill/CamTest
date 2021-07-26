@@ -6,7 +6,9 @@ on Raspberry Pi, and test the effect of the various controls.
 Since my interest is in capturing multiple still images, this program has only a single
 "Still" stream, no seperate "Viewfinder" stream.
 
-It is very much a work in progress, but it sort of works sometimes.
+This program seems to work providing one is using libcamera and RPi firmware of 21 July 2021
+or later. Using software from 24th June or earlier results in image capture hanging after a random
+period. Exactly when is the critical revision between those dates is unknown.
 
 Compilation requires:
 
@@ -19,7 +21,8 @@ There is now one option in CTFrame.cpp that can be configured before compilation
 * If QUEUE_MULTIPLE is zero then repeated frame capture will not queue a new request
 until the previous request has returned.
 * If QUEUE_MULTIPLE is non-zero then repeated frame capture will queue all request
-buffers as soon as they are available.
+buffers as soon as they are available. NOTE: This option increases the frame rate, but results
+in the GUI becoming unresponsive due to CPU starvation.
 
 The resulting ./CamTest application is an X-Window program. When run, it displays camera controls
 on the left hand side, and captured images on the right hand side. If too large to display in full

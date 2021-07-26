@@ -368,9 +368,34 @@ Request completed callback. Not a GUI context so need to queue updates.
 
 void CTFrame::DoneSnap (libcamera::Request *req)
     {
-    // Get callback data
-    
     printf ("DoneSnap\n");
+    
+    // Log all image details
+
+    const libcamera::ControlIdMap &idmap = libcamera::controls::controls;
+    printf ("Frame %d Request controls:\n", m_frame);
+    for (std::pair<const unsigned int, libcamera::ControlValue> cli : req->controls())
+	{
+	// const std::string name = idmap.at(cli.first)->name();
+	std::string name = "Unknown";
+	libcamera::ControlIdMap::const_iterator it = idmap.find (cli.first);
+	if ( it != idmap.end () ) name = it->second->name();
+	std::string val = cli.second.toString();
+	printf ("   Req %s (%d) = %s\n", name.c_str (), cli.first, val.c_str ());
+	}
+    printf ("Frame %d Request metadata:\n", m_frame);
+    for (std::pair<const unsigned int, libcamera::ControlValue> cli : req->metadata())
+	{
+	// const std::string name = idmap.at(cli.first)->name();
+	std::string name = "Unknown";
+	libcamera::ControlIdMap::const_iterator it = idmap.find (cli.first);
+	if ( it != idmap.end () ) name = it->second->name();
+	std::string val = cli.second.toString();
+	printf ("   Have %s (%d) = %s\n", name.c_str (), cli.first, val.c_str ());
+	}
+
+    // Get image data
+    
     libcamera::Request::BufferMap::const_iterator bmapi = req->buffers().begin();
     if ( bmapi == req->buffers().end () ) return;
     const libcamera::StreamConfiguration &scfg = bmapi->first->configuration();
@@ -422,8 +447,6 @@ void CTFrame::DoneSnap (libcamera::Request *req)
         pucImg = pucScl;
         }
     ++m_frame;
-    printf ("Queueing HaveImage event\n");
-    wxCommandEvent *e = new wxCommandEvent(wxEVT_HAVE_IMG);
     ImgInfo *pii = new ImgInfo(pucImg, iWth, iHgt);
     pii->m_frame = m_frame;
     pii->m_iExp = req->metadata().get(libcamera::controls::ExposureTime);
@@ -442,35 +465,14 @@ void CTFrame::DoneSnap (libcamera::Request *req)
 	pii->m_r_gain = -1.0;
 	pii->m_b_gain = -1.0;
 	}
-    e->SetClientData (pii);
-    wxQueueEvent (this, e);
 
-    // Log all image details
-
-    // const libcamera::ControlIdMap &idmap = m_camera->controls().idmap();
-    const libcamera::ControlIdMap &idmap = libcamera::controls::controls;
-    printf ("Frame %d Request controls:\n", m_frame);
-    for (std::pair<const unsigned int, libcamera::ControlValue> cli : req->controls())
-	{
-	// const std::string name = idmap.at(cli.first)->name();
-	std::string name = "Unknown";
-	libcamera::ControlIdMap::const_iterator it = idmap.find (cli.first);
-	if ( it != idmap.end () ) name = it->second->name();
-	std::string val = cli.second.toString();
-	printf ("   Req %s (%d) = %s\n", name.c_str (), cli.first, val.c_str ());
-	}
-    printf ("Frame %d Request metadata:\n", m_frame);
-    for (std::pair<const unsigned int, libcamera::ControlValue> cli : req->metadata())
-	{
-	// const std::string name = idmap.at(cli.first)->name();
-	std::string name = "Unknown";
-	libcamera::ControlIdMap::const_iterator it = idmap.find (cli.first);
-	if ( it != idmap.end () ) name = it->second->name();
-	std::string val = cli.second.toString();
-	printf ("   Have %s (%d) = %s\n", name.c_str (), cli.first, val.c_str ());
-	}
     req->reuse (libcamera::Request::ReuseBuffers);
     m_free_req.push (req);
+    
+    printf ("Queueing HaveImage event\n");
+    wxCommandEvent *e = new wxCommandEvent(wxEVT_HAVE_IMG);
+    e->SetClientData (pii);
+    wxQueueEvent (this, e);
     }
 
 /*** OnHaveImage ********************************************************************************************

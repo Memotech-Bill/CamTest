@@ -1,7 +1,7 @@
 CPP = g++
 CFLAGS = -std=gnu++17 -g $(shell wx-config --cflags) -I/usr/local/include/libcamera/
 LFLAGS = -g
-LIBS = $(shell wx-config --libs) -L/usr/local/include/libcamera/libcamera/ -lcamera
+LIBS = $(shell wx-config --libs) -L/usr/local/include/libcamera/libcamera/ -lcamera -lcamera-base
 
 CamTest	: CamTest.o CTFrame.o ControlWnd.o ImgCtl.o PictWnd.o
 	$(CPP) -o $@ $(LFLAGS) $+ $(LIBS)

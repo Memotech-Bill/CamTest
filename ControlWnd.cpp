@@ -461,6 +461,8 @@ void ControlWnd::ApplyControls (libcamera::ControlList &controls_)
 	controls_.set(libcamera::controls::ColourGains,
 	    {float(m_victl[ctrlRedGain].m_iValue / 100.0),
 	     float(m_victl[ctrlBlueGain].m_iValue / 100.0)});
+    else if ( ( m_victl[ctrlWhiteBal].m_bEnable ) && ( m_victl[ctrlWhiteBal].m_iValue > 0 ) )
+	controls_.set(libcamera::controls::ColourGains, {0.0f, 0.0f});
     // fval = picam->awb_gains_r; printf ("awb_gains_r = %10.3E\n", fval);
 
     /* Dynamic noise reduction */
